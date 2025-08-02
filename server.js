@@ -1,32 +1,59 @@
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
+const crypto = require('crypto');
 const app = express();
+
+const PORT = process.env.PORT || 3000;
+
+// Load private key once
+const privateKey = fs.readFileSync('private.pem', 'utf8');
 
 app.use(cors());
 app.use(express.json());
 
-app.post('/submit', (req, res) => {
-  const code = req.body?.data?.code;
-  if (!code) return res.status(400).send('Invalid input');
+// Serve the public key to frontend
+app.get('/public-key', (req, res) => {
+  const publicKey = fs.readFileSync('public.pem', 'utf8');
+  res.type('text/plain').send(publicKey);
+});
 
-  fs.appendFile('codes.txt', code + '\n', (err) => {
+// Submit route with decryption
+app.post('/submit', (req, res) => {
+  const encryptedCode = req.body?.data?.code;
+  if (!encryptedCode) return res.status(400).send('Missing code');
+
+  let decrypted;
+  try {
+    decrypted = crypto.privateDecrypt(
+      {
+        key: privateKey,
+        padding: crypto.constants.RSA_PKCS1_PADDING,
+      },
+      Buffer.from(encryptedCode, 'base64')
+    ).toString('utf8');
+  } catch (err) {
+    console.error('Decryption failed:', err);
+    return res.status(400).send('Invalid encrypted data');
+  }
+
+  fs.appendFile('codes.txt', decrypted + '\n', (err) => {
     if (err) {
       console.error('Error saving code:', err);
       return res.sendStatus(500);
     }
-    console.log('Saved:', code);
+    console.log('Saved:', decrypted);
     res.sendStatus(200);
   });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-
-
+// View route (protected with key)
 app.get('/view', (req, res) => {
-  const fs = require('fs');
+  const SECRET = 'your-secret-key';
+  const key = req.query.key;
+
+  if (key !== SECRET) return res.status(403).send('Forbidden');
+
   fs.readFile('codes.txt', 'utf8', (err, data) => {
     if (err) {
       console.error('Error reading file:', err);
@@ -35,3 +62,5 @@ app.get('/view', (req, res) => {
     res.type('text').send(data);
   });
 });
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
