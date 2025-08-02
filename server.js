@@ -22,3 +22,16 @@ app.post('/submit', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+
+
+app.get('/view', (req, res) => {
+  const fs = require('fs');
+  fs.readFile('codes.txt', 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading file:', err);
+      return res.status(500).send('Could not read codes.txt');
+    }
+    res.type('text').send(data);
+  });
+});
