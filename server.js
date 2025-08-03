@@ -4,7 +4,9 @@ const cors = require('cors');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const crypto = require('crypto');
+
 const app = express();
+app.set('trust proxy', true); // ✅ Trust Render's proxy to get real client IP
 
 const port = process.env.PORT || 3000;
 const SECRET = "phillpuss45670x";
@@ -32,15 +34,13 @@ app.post('/submit', async (req, res) => {
   const { code, secret } = req.body.data || {};
   if (secret !== SECRET) return res.status(403).send('Forbidden');
 
-  // ✅ Proper IP address extraction behind proxy (Render)
-  let ip = req.headers['x-forwarded-for'];
-  if (ip) {
-    ip = ip.split(',')[0].trim(); // first IP = real client IP
-  } else {
-    ip = req.socket.remoteAddress || 'unknown';
-  }
+  // ✅ Best way to get real client IP behind a proxy (like Render)
+  const ip = req.ip || 'unknown';
 
-  console.log("Client IP:", ip); // for debugging
+  // Optional: Log headers for debugging
+  console.log("x-forwarded-for:", req.headers['x-forwarded-for']);
+  console.log("remoteAddress:", req.socket.remoteAddress);
+  console.log("Detected IP:", ip);
 
   try {
     const decrypted = decryptRSA(code);
