@@ -1,22 +1,18 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const fetch = require('node-fetch'); // Using v2.x of node-fetch
+const fetch = require('node-fetch');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
+// Config
+const SECRET = "phillpuss45670x"; // must match Apps Script secret
+const SHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwQZh22dm83pzwYuGDIORTE0HGdjcQvMnYbV2KOYXYswVCKdLdAGuyzj-tPoAjEXIIQZA/exec";
+
 app.use(cors());
 app.use(bodyParser.json());
 
-// Secret token (must match Apps Script)
-const SECRET = "phillpuss45670x";
-
-// Google Apps Script Web App URL
-const SHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwQZh22dm83pzwYuGDIORTE0HGdjcQvMnYbV2KOYXYswVCKdLdAGuyzj-tPoAjEXIIQZA/exec";
-
-// Main endpoint
 app.post('/submit', async (req, res) => {
   const { code, secret } = req.body.data || {};
 
@@ -26,27 +22,28 @@ app.post('/submit', async (req, res) => {
 
   try {
     const response = await fetch(SHEET_WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, token: SECRET }) // ✅ Add token here
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        token: SECRET, // Send as `token`, not `secret`
+      }),
     });
 
-    const result = await response.text();
-    res.send("Appended to Google Sheet: " + result);
+    const text = await response.text();
+    res.send(`Google Sheet response: ${text}`);
   } catch (err) {
-    console.error("Error posting to sheet:", err);
+    console.error("Error posting to Google Sheet:", err);
     res.status(500).send("Server error");
   }
 });
 
-// Optional: viewing endpoint for testing (Render log view)
 app.get('/view', (req, res) => {
   const { key } = req.query;
-  if (key !== SECRET) return res.status(403).send('Forbidden');
+  if (key !== SECRET) return res.status(403).send("Unauthorized");
   res.send("View logic placeholder (if you used file or memory logging).");
 });
 
-// Start server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
