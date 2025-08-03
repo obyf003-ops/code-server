@@ -2,61 +2,62 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const crypto = require('crypto');
+const path = require('path');
+
 const app = express();
-
-// Read encryption keys
-const privateKey = fs.readFileSync('private.pem', 'utf8');
-const publicKey = fs.readFileSync('public.pem', 'utf8');
-
-// Middleware
-app.use(cors()); // allow all origins
+app.use(cors());
 app.use(express.json());
 
-// Endpoint: Get public key
+// Load private/public keys
+const privateKey = fs.readFileSync(path.join(__dirname, 'private.pem'), 'utf8');
+const publicKey = fs.readFileSync(path.join(__dirname, 'public.pem'), 'utf8');
+
+// POST /submit - receive encrypted data
+app.post('/submit', (req, res) => {
+  const encrypted = req.body?.data?.code;
+
+  if (!encrypted) return res.status(400).send('Missing encrypted code');
+
+  try {
+    const buffer = Buffer.from(encrypted, 'base64');
+    const decrypted = crypto.privateDecrypt(
+      {
+        key: privateKey,
+        padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, // safer padding
+        oaepHash: 'sha256',
+      },
+      buffer
+    );
+
+    const decoded = decrypted.toString('utf8');
+
+    fs.appendFileSync('codes.txt', decoded + '\n');
+    console.log('Saved:', decoded);
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Decryption failed:', err);
+    res.status(500).send('Failed to decrypt');
+  }
+});
+
+// GET /public-key - send public key to frontend
 app.get('/public-key', (req, res) => {
   res.type('text/plain').send(publicKey);
 });
 
-// Endpoint: Submit encrypted data
-app.post('/submit', (req, res) => {
-  const encryptedCode = req.body?.data?.code;
-  if (!encryptedCode) return res.status(400).send('Missing code');
-
-  try {
-    const decrypted = crypto.privateDecrypt(
-      {
-        key: privateKey,
-        padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-        oaepHash: 'sha256',
-      },
-      Buffer.from(encryptedCode, 'base64')
-    ).toString('utf8');
-
-    fs.appendFile('codes.txt', decrypted + '\n', (err) => {
-      if (err) {
-        console.error('File write error:', err);
-        return res.sendStatus(500);
-      }
-      console.log('Saved:', decrypted);
-      res.sendStatus(200);
-    });
-  } catch (err) {
-    console.error('Decryption failed:', err);
-    res.status(400).send('Decryption failed');
-  }
-});
-
-// Optional: Secure the /view route (add a token to query param)
-const VIEW_SECRET = 'my-secret-token'; // Change this
+// GET /view - safely show file content (auto-create if missing)
 app.get('/view', (req, res) => {
-  if (req.query.token !== VIEW_SECRET) {
-    return res.status(403).send('Forbidden');
+  const filePath = 'codes.txt';
+
+  // Create file if it doesn't exist
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, '');
   }
 
-  fs.readFile('codes.txt', 'utf8', (err, data) => {
+  fs.readFile(filePath, 'utf8', (err, data) => {
     if (err) {
-      console.error('Read error:', err);
-      return res.status(500).send('Could not read file');
+      console.error('Error reading codes.txt:', err);
+      return res.status(500).send('Could not read codes.txt');
     }
     res.type('text').send(data);
   });
@@ -64,4 +65,6 @@ app.get('/view', (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
