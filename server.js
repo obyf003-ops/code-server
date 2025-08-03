@@ -32,7 +32,15 @@ app.post('/submit', async (req, res) => {
   const { code, secret } = req.body.data || {};
   if (secret !== SECRET) return res.status(403).send('Forbidden');
 
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+  // ✅ Proper IP address extraction behind proxy (Render)
+  let ip = req.headers['x-forwarded-for'];
+  if (ip) {
+    ip = ip.split(',')[0].trim(); // first IP = real client IP
+  } else {
+    ip = req.socket.remoteAddress || 'unknown';
+  }
+
+  console.log("Client IP:", ip); // for debugging
 
   try {
     const decrypted = decryptRSA(code);
