@@ -30,8 +30,9 @@ function decryptRSA(base64Encrypted) {
 
 app.post('/submit', async (req, res) => {
   const { code, secret } = req.body.data || {};
-
   if (secret !== SECRET) return res.status(403).send('Forbidden');
+
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
 
   try {
     const decrypted = decryptRSA(code);
@@ -39,7 +40,7 @@ app.post('/submit', async (req, res) => {
     const response = await fetch(SHEET_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: SECRET, code: decrypted }),
+      body: JSON.stringify({ token: SECRET, code: decrypted, ip }),
     });
 
     const result = await response.text();
