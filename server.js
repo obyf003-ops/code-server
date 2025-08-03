@@ -23,7 +23,7 @@ app.post('/submit', (req, res) => {
     const decrypted = crypto.privateDecrypt(
       {
         key: privateKey,
-        padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, // safer padding
+        padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
         oaepHash: 'sha256',
       },
       buffer
@@ -45,11 +45,17 @@ app.get('/public-key', (req, res) => {
   res.type('text/plain').send(publicKey);
 });
 
-// GET /view - safely show file content (auto-create if missing)
+// GET /view - protected by secret key
 app.get('/view', (req, res) => {
+  const secret = req.query.key;
+  const YOUR_SECRET_KEY = 'phillpuss45670x'; // 🔒 change this to something only you know
+
+  if (secret !== YOUR_SECRET_KEY) {
+    return res.status(403).send('Forbidden');
+  }
+
   const filePath = 'codes.txt';
 
-  // Create file if it doesn't exist
   if (!fs.existsSync(filePath)) {
     fs.writeFileSync(filePath, '');
   }
