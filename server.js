@@ -1,14 +1,16 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const https = require('https');
-const fs = require('fs');
+const cors = require('cors');
+const fetch = require('node-fetch'); // make sure to install this
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Middleware
+app.use(cors());
 app.use(bodyParser.json());
 
 // Optional: secret token to prevent abuse
-const SECRET = "phillpuss45670x"; // Change this to something private
+const SECRET = "phillpuss45670x"; // Keep this private!
 
 // Google Apps Script Web App URL
 const SHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwQZh22dm83pzwYuGDIORTE0HGdjcQvMnYbV2KOYXYswVCKdLdAGuyzj-tPoAjEXIIQZA/exec";
