@@ -1,18 +1,16 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const fetch = require('node-fetch'); // make sure to install this
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
+app.use(cors()); // Allow all origins (adjust if needed)
 app.use(bodyParser.json());
 
-// Optional: secret token to prevent abuse
-const SECRET = "phillpuss45670x"; // Keep this private!
+const SECRET = "phillpuss45670x";
 
-// Google Apps Script Web App URL
 const SHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwQZh22dm83pzwYuGDIORTE0HGdjcQvMnYbV2KOYXYswVCKdLdAGuyzj-tPoAjEXIIQZA/exec";
 
 app.post('/submit', async (req, res) => {
