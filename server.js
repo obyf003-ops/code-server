@@ -34,25 +34,18 @@ app.post('/submit', async (req, res) => {
   const { code, secret } = req.body.data || {};
   if (secret !== SECRET) return res.status(403).send('Forbidden');
 
-  // ✅ Best way to get real client IP behind a proxy (like Render)
   const ip = req.ip || 'unknown';
-
-  // Optional: Log headers for debugging
-  console.log("x-forwarded-for:", req.headers['x-forwarded-for']);
-  console.log("remoteAddress:", req.socket.remoteAddress);
-  console.log("Detected IP:", ip);
 
   try {
     const decrypted = decryptRSA(code);
 
-    const response = await fetch(SHEET_WEBHOOK_URL, {
+    await fetch(SHEET_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token: SECRET, code: decrypted, ip }),
     });
 
-    const result = await response.text();
-    res.send("Appended decrypted log to Google Sheet: " + result);
+    res.end(); // 👈 No response text sent to client
   } catch (err) {
     console.error("Decryption/Post Error:", err);
     res.status(500).send("Server error during decryption or forwarding.");
